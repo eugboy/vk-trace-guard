@@ -1,0 +1,40 @@
+body {
+  margin: 0;
+  font-family: Inter, Arial, sans-serif;
+  background: radial-gradient(circle at top, #102840, #070b12 50%);
+  color: #e6effa;
+}
+
+.layout {
+  padding: 1rem 1.25rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.mb-1 {
+  margin-bottom: 1rem;
+}
+
+code {
+  background: #0f2236;
+  border: 1px solid #2a4867;
+  border-radius: 0.4rem;
+  padding: 0.1rem 0.35rem;
+}
+
+.p-card {
+  background: rgba(11, 23, 38, 0.88);
+  border: 1px solid #294767;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.p-inputtext {
+  min-width: 280px;
+}
