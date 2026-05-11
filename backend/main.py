@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from routes.predict import router as predict_router
-from routes.vk import router as vk_router
 from services.ml_service import ensure_model_loaded
 import os
 
@@ -34,4 +33,3 @@ def health() -> dict:
 
 
 app.include_router(predict_router)
-app.include_router(vk_router)

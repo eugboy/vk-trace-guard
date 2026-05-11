@@ -35,3 +35,8 @@ export interface TrainingResponse {
   message: string;
   metrics: Record<string, unknown>;
 }
+
+export interface TrainingLabelRequest {
+  vk_id: string;
+  label: number; // 0 - REAL, 1 - FAKE
+}

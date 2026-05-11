@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
-import { AnalyzeResponse, BatchResponse } from '../models';
+import { AnalyzeResponse, BatchResponse, TrainingLabelRequest, TrainingResponse } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly baseUrl = 'http://127.0.0.1:8000';
-
+  
   constructor(private readonly http: HttpClient) {}
 
   predict(vkId: string): Observable<AnalyzeResponse> {
@@ -42,6 +42,13 @@ export class ApiService {
   metrics(): Observable<{ accuracy?: number; feature_importance: Record<string, number> }> {
     return this.http.get<{ accuracy?: number; feature_importance: Record<string, number> }>(
       `${this.baseUrl}/metrics`
+    );
+  }
+
+  labelTrainingData(request: TrainingLabelRequest): Observable<TrainingResponse> {
+    return this.http.post<TrainingResponse>(
+      `${this.baseUrl}/training/label`,
+      request
     );
   }
 

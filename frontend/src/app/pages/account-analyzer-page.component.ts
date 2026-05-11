@@ -863,12 +863,8 @@ import { AnalyzeResponse, TrainingResponse } from '../models';
     }
   `],
 })
-export class AccountAnalyzerPageComponent {
-
-  vkId = '';
-  loading = false;
-  result?: AnalyzeResponse;
-  errorText = '';
+  labelingLoading = false;
+  labelingResult?: TrainingResponse;
 
   constructor(
     private readonly api: ApiService,
@@ -884,6 +880,7 @@ export class AccountAnalyzerPageComponent {
     this.loading = true;
     this.errorText = '';
     this.result = undefined;
+    this.labelingResult = undefined;
 
     this.api
       .predict(this.vkId.trim())
@@ -917,6 +914,76 @@ export class AccountAnalyzerPageComponent {
             err?.error?.detail
             ?? 'Не удалось получить данные анализа';
 
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  labelAccount(label: number): void {
+    if (!this.result?.vk_id) {
+      return;
+    }
+
+    this.labelingLoading = true;
+    this.labelingResult = undefined;
+
+    this.api
+      .labelTrainingData({ vk_id: this.result.vk_id, label })
+      .pipe(
+        finalize(() => {
+          this.labelingLoading = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (res) => {
+          this.labelingResult = res;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error(err);
+          this.labelingResult = {
+            success: false,
+            message: err?.error?.detail ?? 'Ошибка при сохранении разметки',
+            metrics: {},
+          };
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  riskRu(risk: string): string {
+
+    switch (risk) {
+
+      case 'HIGH':
+        return 'Высокий';
+
+      case 'MEDIUM':
+        return 'Средний';
+
+      default:
+        return 'Низкий';
+    }
+  }
+
+  
+          this.labelingLoading = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (res) => {
+          this.labelingResult = res;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error(err);
+          this.labelingResult = {
+            success: false,
+            message: err?.error?.detail ?? 'Ошибка при сохранении разметки',
+            metrics: {},
+          };
           this.cdr.detectChanges();
         },
       });
