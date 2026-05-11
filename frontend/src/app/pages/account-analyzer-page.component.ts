@@ -11,9 +11,10 @@ import { ProgressBarModule } from 'primeng/progressbar';
 import { SkeletonModule } from 'primeng/skeleton';
 import { DividerModule } from 'primeng/divider';
 import { AvatarModule } from 'primeng/avatar';
+import { TooltipModule } from 'primeng/tooltip';
 
 import { ApiService } from '../services/api.service';
-import { AnalyzeResponse } from '../models';
+import { AnalyzeResponse, TrainingResponse } from '../models';
 
 @Component({
   selector: 'app-account-analyzer',
@@ -29,6 +30,7 @@ import { AnalyzeResponse } from '../models';
     SkeletonModule,
     DividerModule,
     AvatarModule,
+    TooltipModule,
   ],
   template: `
 
@@ -361,6 +363,61 @@ import { AnalyzeResponse } from '../models';
 
                 </div>
 
+              </div>
+
+              <div class="glass-card labeling-card" *ngIf="result">
+                <div class="card-header">
+                  <i class="pi pi-bookmark"></i>
+                  Разметка для обучения
+                </div>
+                
+                <p class="labeling-description">
+                  Помогите улучшить модель, указав правильный статус аккаунта:
+                </p>
+                
+                <div class="labeling-buttons">
+                  <button
+                    pButton
+                    type="button"
+                    label="Фейк"
+                    icon="pi pi-times"
+                    class="p-button-danger labeling-btn"
+                    [loading]="labelingLoading"
+                    (click)="labelAccount(1)"
+                  ></button>
+                  
+                  <button
+                    pButton
+                    type="button"
+                    label="Реальный"
+                    icon="pi pi-check"
+                    class="p-button-success labeling-btn"
+                    [loading]="labelingLoading"
+                    (click)="labelAccount(0)"
+                  ></button>
+                  
+                  <button
+                    pButton
+                    type="button"
+                    label="Неизвестно"
+                    icon="pi pi-question"
+                    class="p-button-secondary labeling-btn"
+                    [disabled]="true"
+                    pTooltip="Эта опция пока недоступна"
+                    tooltipPosition="top"
+                  ></button>
+                </div>
+                
+                <div class="labeling-result" *ngIf="labelingResult">
+                  <div [class]="'labeling-status ' + (labelingResult.success ? 'success' : 'error')">
+                    <i [class]="'pi ' + (labelingResult.success ? 'pi-check-circle' : 'pi-times-circle')"></i>
+                    {{ labelingResult.message }}
+                  </div>
+                  <div class="labeling-metrics" *ngIf="labelingResult.success">
+                    <span class="metric-item">Accuracy: {{ labelingResult.metrics.accuracy }}</span>
+                    <span class="metric-item">F1-Score: {{ labelingResult.metrics.f1_score }}</span>
+                  </div>
+                </div>
               </div>
 
             </div>

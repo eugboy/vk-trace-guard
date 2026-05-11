@@ -87,7 +87,7 @@ from services.feature_engineering import (
     explain_risk_factors,
     map_risk_level,
 )
-from services.ml_service import load_metrics, predict_sample
+from services.ml_service import add_training_data, load_metrics, predict_sample, retrain_model
 from services.vk_service import get_vk_user_profile
 
 
@@ -107,6 +107,17 @@ class AnalyzeResponse(BaseModel):
     reasons: List[str]
     features: Dict[str, float]
     profile_info: Dict[str, Any]
+
+
+class TrainingLabelRequest(BaseModel):
+    vk_id: str
+    label: int  # 0 - REAL, 1 - FAKE
+
+
+class TrainingResponse(BaseModel):
+    success: bool
+    message: str
+    metrics: Dict
 
 
 # -------------------------
@@ -162,6 +173,37 @@ def predict(request: AnalyzeRequest) -> AnalyzeResponse:
         return analyze_vk_profile(request.vk_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Analysis failed: {exc}") from exc
+
+
+@router.post("/training/label", response_model=TrainingResponse)
+def label_training_data(request: TrainingLabelRequest) -> TrainingResponse:
+    """Добавить размеченные данные в датасет и переобучить модель"""
+    try:
+        # Найти последний анализ для этого vk_id в истории
+        last_analysis = None
+        for record in analysis_history:
+            if record.get("vk_id") == request.vk_id or normalize_vk_id(record.get("vk_id", "")) == normalize_vk_id(request.vk_id):
+                last_analysis = record
+                break
+        
+        if not last_analysis:
+            raise HTTPException(status_code=404, detail="No analysis found for this vk_id. Please analyze the account first.")
+        
+        # Добавить данные в датасет
+        add_training_data(last_analysis["features"], request.label)
+        
+        # Переобучить модель
+        new_metrics = retrain_model()
+        
+        return TrainingResponse(
+            success=True,
+            message=f"Data added and model retrained. Dataset now contains more samples.",
+            metrics=new_metrics
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Training failed: {exc}") from exc
 
 
 @router.get("/history")

@@ -1,10 +1,41 @@
-.venv/
-backend/.venv/
-frontend/node_modules/
-frontend/.angular/
-frontend/dist/
-__pycache__/
+```
+# Compiled and build artifacts
 *.pyc
-backend/model/model.pkl
-backend/model/metrics.json
-backend/.env
+__pycache__/
+*.o
+*.obj
+dist/
+build/
+target/
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+.mypy_cache/
+.pytest_cache/
+.gradle/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# System files
+.DS_Store
+Thumbs.db
+```

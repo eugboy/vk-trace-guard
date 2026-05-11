@@ -29,3 +29,9 @@ export interface BatchResponse {
   summary: BatchSummary;
   items: AnalyzeResponse[];
 }
+
+export interface TrainingResponse {
+  success: boolean;
+  message: string;
+  metrics: Record<string, unknown>;
+}

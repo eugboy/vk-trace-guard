@@ -81,3 +81,30 @@ def load_metrics() -> Dict:
     if not METRICS_PATH.exists():
         ensure_model_loaded()
     return json.loads(METRICS_PATH.read_text(encoding="utf-8"))
+
+
+def add_training_data(features: Dict[str, float], label: int) -> None:
+    """Добавить новую запись в датасет"""
+    df = pd.read_csv(DATASET_PATH)
+    
+    new_row = {
+        "followers_count": features.get("followers_count", 0),
+        "friends_count": features.get("friends_count", 0),
+        "posts_count": features.get("posts_count", 0),
+        "groups_count": features.get("groups_count", 0),
+        "account_age_days": features.get("account_age_days", 365),
+        "has_avatar": features.get("has_avatar", 0),
+        "bio_filled": features.get("bio_filled", 0),
+        "followers_friends_ratio": features.get("followers_friends_ratio", 1.0),
+        "label": label,
+    }
+    
+    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+    df.to_csv(DATASET_PATH, index=False)
+
+
+def retrain_model() -> Dict:
+    """Переобучить модель и вернуть новые метрики"""
+    global _model
+    _model = train_and_save_model()
+    return load_metrics()
