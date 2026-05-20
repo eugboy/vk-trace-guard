@@ -1,0 +1,4 @@
+followers_count,friends_count,posts_count,groups_count,has_avatar,bio_filled,followers_friends_ratio,label,vk_id,predicted_label,verdict,true_label,submitted_at
+10.0,5.0,0.0,2.0,0.0,0.0,2.0,1,999,,,,2026-05-20T18:39:30.050834+00:00
+344.0,291.0,12.0,243.0,1.0,0.0,1.18213058419244,0,422484670,REAL,correct,REAL,2026-05-20T21:07:53.961383+00:00
+125.0,121.0,12.0,118.0,1.0,0.0,1.0330578512396693,0,419370659,REAL,correct,REAL,2026-05-20T21:08:44.221439+00:00

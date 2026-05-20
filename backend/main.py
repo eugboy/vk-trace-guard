@@ -1,16 +1,17 @@
+import asyncio
+import sys
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from routes.predict import router as predict_router
-from routes.vk import router as vk_router
 from services.ml_service import ensure_model_loaded
-import os
 
-
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 load_dotenv()
-print("VK TOKEN LOADED:", bool(os.getenv("VK_TOKEN")))
 
 app = FastAPI(title="TraceGuard VK API", version="1.0.0")
 
@@ -34,4 +35,3 @@ def health() -> dict:
 
 
 app.include_router(predict_router)
-app.include_router(vk_router)

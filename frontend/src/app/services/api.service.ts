@@ -1,7 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
-import { AnalyzeResponse, BatchResponse } from '../models';
+import {
+  AnalyzeResponse,
+  FeedbackResponse,
+  FeedbackStats,
+  FeedbackVerdict,
+} from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -13,24 +18,6 @@ export class ApiService {
     return this.http
       .post<unknown>(`${this.baseUrl}/predict`, { vk_id: vkId })
       .pipe(map((payload) => this.normalizeAnalyze(payload)));
-  }
-
-  analyzeFollowers(vkId: string): Observable<BatchResponse> {
-    return this.http
-      .post<unknown>(`${this.baseUrl}/analyze-followers`, {
-        vk_id: vkId,
-        limit: 20,
-      })
-      .pipe(map((payload) => this.normalizeBatch(payload)));
-  }
-
-  analyzeCommunity(groupId: string): Observable<BatchResponse> {
-    return this.http
-      .post<unknown>(`${this.baseUrl}/analyze-community`, {
-        group_id: groupId,
-        limit: 20,
-      })
-      .pipe(map((payload) => this.normalizeBatch(payload)));
   }
 
   history(): Observable<Array<{ vk_id: string; label: string; probability: number }>> {
@@ -45,23 +32,22 @@ export class ApiService {
     );
   }
 
-  private normalizeBatch(payload: unknown): BatchResponse {
-    const source = (payload ?? {}) as Partial<BatchResponse> & { items?: unknown[] };
-    const summary = source.summary ?? {
-      total: 0,
-      real_percent: 0,
-      fake_percent: 0,
-      suspicious_percent: 0,
-    };
-    return {
-      summary: {
-        total: Number(summary.total ?? 0),
-        real_percent: Number(summary.real_percent ?? 0),
-        fake_percent: Number(summary.fake_percent ?? 0),
-        suspicious_percent: Number(summary.suspicious_percent ?? 0),
-      },
-      items: Array.isArray(source.items) ? source.items.map((item) => this.normalizeAnalyze(item)) : [],
-    };
+  feedbackStats(): Observable<FeedbackStats> {
+    return this.http.get<FeedbackStats>(`${this.baseUrl}/feedback/stats`);
+  }
+
+  submitFeedback(
+    vkId: string,
+    features: Record<string, number>,
+    predictedLabel: 'REAL' | 'FAKE',
+    verdict: FeedbackVerdict
+  ): Observable<FeedbackResponse> {
+    return this.http.post<FeedbackResponse>(`${this.baseUrl}/feedback`, {
+      vk_id: vkId,
+      features,
+      predicted_label: predictedLabel,
+      verdict,
+    });
   }
 
   private normalizeAnalyze(payload: unknown): AnalyzeResponse {
@@ -70,10 +56,9 @@ export class ApiService {
       full_name: '',
       avatar_url: '',
       bio_text: '',
-      data_source: 'unknown',
+      data_source: 'vk_api',
       has_avatar: false,
       bio_filled: false,
-      created_at: '',
     };
     return {
       vk_id: String(source.vk_id ?? ''),
@@ -89,11 +74,13 @@ export class ApiService {
         full_name: String(profile.full_name ?? ''),
         avatar_url: String(profile.avatar_url ?? ''),
         bio_text: String(profile.bio_text ?? ''),
-        data_source: String(profile.data_source ?? 'unknown'),
+        data_source: String(profile.data_source ?? 'vk_api'),
         has_avatar: Boolean(profile.has_avatar),
         bio_filled: Boolean(profile.bio_filled),
-        created_at: String(profile.created_at ?? ''),
       },
+      ollama_analysis:
+        typeof source.ollama_analysis === 'string' ? source.ollama_analysis : null,
+      ollama_error: typeof source.ollama_error === 'string' ? source.ollama_error : null,
     };
   }
 }

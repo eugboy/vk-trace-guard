@@ -11,7 +11,7 @@ AI-powered VK digital footprint analysis system for fake account detection.
 ## Project structure
 
 - `backend/` - API, VK integration, feature engineering, ML model pipeline
-- `frontend/` - Angular dashboard and analyzers
+- `frontend/` - Angular dashboard and user analyzer
 
 ## Run backend
 
@@ -19,8 +19,9 @@ AI-powered VK digital footprint analysis system for fake account detection.
 2. `python -m venv .venv`
 3. Windows: `.venv\Scripts\activate`
 4. `pip install -r requirements.txt`
-5. Optional VK token: copy `.env.example` to `.env` and set `VK_TOKEN`
-6. `uvicorn main:app --reload`
+5. Copy `.env.example` to `.env` and set `VK_TOKEN` (required)
+6. Set `GROQ_API_KEY` in `.env` ([Groq Console](https://console.groq.com/))
+7. `uvicorn main:app --reload`
 
 Backend runs at `http://127.0.0.1:8000`.
 
@@ -35,12 +36,13 @@ Frontend runs at `http://127.0.0.1:4200`.
 ## Key endpoints
 
 - `POST /predict` with `{ "vk_id": "id1" }`
-- `POST /analyze-followers` with `{ "vk_id": "id1", "limit": 20 }`
-- `POST /analyze-community` with `{ "group_id": "public1", "limit": 20 }`
+- `POST /feedback` — user label for retraining (`verdict`: `correct`, `incorrect_real`, `incorrect_fake`)
+- `GET /feedback/stats` — statistics from `backend/data/user_feedback.csv`
 - `GET /history` (last 10 analyses)
 - `GET /metrics` (model metrics + feature importance)
 
 ## Notes
 
-- If VK API data is unavailable, backend automatically uses mock fallback profile data.
-- Model is trained from `backend/data/sample_vk_dataset.csv` and persisted to `backend/model/model.pkl`.
+- All profile data is loaded from VK API. On error, the API returns the VK error message text.
+- AI analysis (блок «Ollama» в UI) идёт через Groq OpenAI-compatible API (`https://api.groq.com/openai/v1`). В `.env` нужен только `GROQ_API_KEY` (также читается `OLLAMA_API_KEY` для совместимости). Модель зашита в коде, настраивать не нужно. Если API недоступен, ML-результат всё равно возвращается.
+- Model is trained from `backend/data/sample_vk_dataset.csv` plus user feedback in `backend/data/user_feedback.csv`, then persisted to `backend/model/model.pkl`.

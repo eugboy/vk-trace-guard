@@ -29,7 +29,7 @@ import { ApiService } from '../services/api.service';
 
         <p>
           Метрики модели, история проверок,
-          статистика и влияние ML-признаков.
+          разметка пользователей и влияние ML-признаков.
         </p>
 
       </section>
@@ -45,6 +45,11 @@ import { ApiService } from '../services/api.service';
 
           <p-skeleton
             height="180px"
+            borderRadius="28px"
+          ></p-skeleton>
+
+          <p-skeleton
+            height="480px"
             borderRadius="28px"
           ></p-skeleton>
 
@@ -116,6 +121,32 @@ import { ApiService } from '../services/api.service';
 
           </div>
 
+          <div class="glass-card kpi-card">
+
+            <div class="kpi-top">
+
+              <div>
+                <div class="kpi-title">
+                  Разметок пользователей
+                </div>
+
+                <div class="kpi-value">
+                  {{ feedbackTotal }}
+                </div>
+              </div>
+
+              <div class="kpi-icon green">
+                <i class="pi pi-check-square"></i>
+              </div>
+
+            </div>
+
+            <div class="kpi-label">
+              Подтверждений анализа: {{ feedbackAccuracy }}%
+            </div>
+
+          </div>
+
         </div>
 
         <div class="dashboard-chart-grid">
@@ -153,6 +184,51 @@ import { ApiService } from '../services/api.service';
                 [data]="lineData"
                 [options]="lineChartOptions"
               ></p-chart>
+
+            </div>
+
+          </div>
+
+          <div class="glass-card chart-card">
+
+            <div class="card-title">
+              <i class="pi pi-comments"></i>
+              Проверки пользователей
+            </div>
+
+            <div class="chart-wrap chart-wrap-pie">
+
+              @if (feedbackTotal > 0) {
+                <p-chart
+                  type="doughnut"
+                  [data]="feedbackPieData"
+                  [options]="feedbackPieOptions"
+                ></p-chart>
+              } @else {
+                <div class="chart-empty">
+                  Пока нет разметки. Отметьте результат
+                  на странице анализа пользователя.
+                </div>
+              }
+
+            </div>
+
+            <div class="feedback-legend">
+
+              <div class="legend-item">
+                <span class="dot correct"></span>
+                Верно: {{ feedbackStats.correct }}
+              </div>
+
+              <div class="legend-item">
+                <span class="dot real"></span>
+                Неверно — реальный: {{ feedbackStats.incorrect_real }}
+              </div>
+
+              <div class="legend-item">
+                <span class="dot fake"></span>
+                Неверно — фейк: {{ feedbackStats.incorrect_fake }}
+              </div>
 
             </div>
 
@@ -356,6 +432,12 @@ import { ApiService } from '../services/api.service';
       border: 1px solid rgba(139,92,246,.25);
     }
 
+    .kpi-icon.green {
+      background: rgba(34,197,94,.15);
+      color: #86efac;
+      border: 1px solid rgba(34,197,94,.25);
+    }
+
     .chart-card {
       padding: 1.5rem;
     }
@@ -376,6 +458,54 @@ import { ApiService } from '../services/api.service';
         height: 430px;
       }
     }
+
+    .chart-wrap-pie {
+      height: 320px;
+
+      p-chart canvas {
+        height: 320px;
+      }
+    }
+
+    .chart-empty {
+      height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      color: #94a3b8;
+      line-height: 1.6;
+      border-radius: 20px;
+      background: rgba(255,255,255,.03);
+      border: 1px dashed rgba(255,255,255,.1);
+    }
+
+    .feedback-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1.25rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      color: #94a3b8;
+      font-size: .92rem;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .dot.correct { background: #22c55e; }
+    .dot.real { background: #3b82f6; }
+    .dot.fake { background: #ef4444; }
 
     @media (max-width: 900px) {
 
@@ -414,9 +544,30 @@ export class DashboardPageComponent implements OnInit {
 
   accuracy = '-';
   historyCount = 0;
+  feedbackTotal = 0;
+  feedbackAccuracy = '0';
+
+  feedbackStats = {
+    correct: 0,
+    incorrect_real: 0,
+    incorrect_fake: 0,
+  };
 
   barData: any = {};
   lineData: any = {};
+  feedbackPieData: any = {};
+  feedbackPieOptions = {
+    maintainAspectRatio: false,
+    responsive: true,
+    plugins: {
+      legend: {
+        labels: {
+          color: '#ffffff',
+          font: { size: 13 },
+        },
+      },
+    },
+  };
 
   barChartOptions = {
     maintainAspectRatio: false,
@@ -519,6 +670,43 @@ export class DashboardPageComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    let metricsLoaded = false;
+    let historyLoaded = false;
+    let feedbackLoaded = false;
+
+    const tryFinishLoading = () => {
+      if (metricsLoaded && historyLoaded && feedbackLoaded) {
+        this.loading = false;
+      }
+    };
+
+    this.api.feedbackStats().subscribe({
+      next: (stats) => {
+        this.feedbackTotal = stats.total;
+        this.feedbackAccuracy = stats.accuracy_percent.toFixed(1);
+        this.feedbackStats = {
+          correct: stats.correct,
+          incorrect_real: stats.incorrect_real,
+          incorrect_fake: stats.incorrect_fake,
+        };
+        this.feedbackPieData = {
+          labels: ['Верно', 'Неверно — реальный', 'Неверно — фейк'],
+          datasets: [
+            {
+              data: [stats.correct, stats.incorrect_real, stats.incorrect_fake],
+              backgroundColor: ['#22c55e', '#3b82f6', '#ef4444'],
+              borderWidth: 0,
+            },
+          ],
+        };
+        feedbackLoaded = true;
+        tryFinishLoading();
+      },
+      error: () => {
+        feedbackLoaded = true;
+        tryFinishLoading();
+      },
+    });
 
     this.api.metrics().subscribe((metrics) => {
 
@@ -565,7 +753,8 @@ export class DashboardPageComponent implements OnInit {
         ],
       };
 
-      this.loading = false;
+      metricsLoaded = true;
+      tryFinishLoading();
     });
 
     this.api.history().subscribe((items) => {
@@ -598,6 +787,9 @@ export class DashboardPageComponent implements OnInit {
           },
         ],
       };
+
+      historyLoaded = true;
+      tryFinishLoading();
     });
   }
 
@@ -616,9 +808,6 @@ export class DashboardPageComponent implements OnInit {
 
       groups_count:
         'Группы',
-
-      account_age_days:
-        'Возраст',
 
       has_avatar:
         'Аватар',

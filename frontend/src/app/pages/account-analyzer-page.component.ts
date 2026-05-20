@@ -9,11 +9,8 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { SkeletonModule } from 'primeng/skeleton';
-import { DividerModule } from 'primeng/divider';
-import { AvatarModule } from 'primeng/avatar';
-
 import { ApiService } from '../services/api.service';
-import { AnalyzeResponse } from '../models';
+import { AnalyzeResponse, FeedbackVerdict } from '../models';
 
 @Component({
   selector: 'app-account-analyzer',
@@ -27,11 +24,8 @@ import { AnalyzeResponse } from '../models';
     TagModule,
     ProgressBarModule,
     SkeletonModule,
-    DividerModule,
-    AvatarModule,
   ],
   template: `
-
       <p-card styleClass="main-card">
 
         <ng-template pTemplate="header">
@@ -46,8 +40,8 @@ import { AnalyzeResponse } from '../models';
               <h1>Проверка аккаунта на фейк</h1>
 
               <p>
-                Анализ активности, цифрового следа, друзей,
-                подписчиков и ML-признаков.
+                ML-анализ цифрового следа и экспертная оценка
+                нейросети Ollama.
               </p>
             </div>
 
@@ -108,6 +102,11 @@ import { AnalyzeResponse } from '../models';
                 borderRadius="24px"
               ></p-skeleton>
             </div>
+
+            <p-skeleton
+              height="280px"
+              borderRadius="24px"
+            ></p-skeleton>
 
           </div>
 
@@ -198,66 +197,16 @@ import { AnalyzeResponse } from '../models';
               <div class="profile-card glass-card">
 
                 <div class="card-header">
-                  <i class="pi pi-user"></i>
-                  Профиль VK
-                </div>
-
-                <div class="profile-top">
-
-                  @if (result.profile_info?.avatar_url) {
-
-                    <div class="avatar-wrapper">
-
-                      <img
-                        [src]="result.profile_info?.avatar_url"
-                        alt="avatar"
-                        class="avatar-image"
-                        loading="lazy"
-                        referrerpolicy="no-referrer"
-                      />
-
-                      <div class="avatar-ring"></div>
-
-                    </div>
-
-                  } @else {
-
-                    <div class="avatar-fallback">
-                      <i class="pi pi-user"></i>
-                    </div>
-
-                  }
-
-                  <div class="profile-main">
-
-                    <div class="profile-name">
-                      {{
-                        result.profile_info?.full_name
-                          || 'Неизвестный пользователь'
-                      }}
-                    </div>
-
-                    <div class="profile-id">
-                      {{ result.vk_id || vkId }}
-                    </div>
-
-                    <div class="profile-status">
-
-                      <div class="status-dot"></div>
-
-                      {{
-                        result.profile_info?.data_source === 'vk_api'
-                          ? 'Данные из VK API'
-                          : 'Mock fallback'
-                      }}
-
-                    </div>
-
-                  </div>
-
+                  <i class="pi pi-id-card"></i>
+                  Информация о пользователе
                 </div>
 
                 <div class="info-list">
+
+                  <div class="info-item">
+                    <span>ID пользователя</span>
+                    <b>{{ result.vk_id || vkId }}</b>
+                  </div>
 
                   <div class="info-item">
                     <span>Аватар</span>
@@ -281,14 +230,16 @@ import { AnalyzeResponse } from '../models';
                     </b>
                   </div>
 
+                  @if (result.profile_info?.bio_text) {
+                    <div class="info-item bio-item">
+                      <span>Текст био</span>
+                      <b>{{ result.profile_info?.bio_text }}</b>
+                    </div>
+                  }
+
                   <div class="info-item">
-                    <span>Дата создания</span>
-                    <b>
-                      {{
-                        result.profile_info?.created_at
-                          || 'Неизвестно'
-                      }}
-                    </b>
+                    <span>Источник данных</span>
+                    <b>VK API</b>
                   </div>
 
                 </div>
@@ -362,6 +313,109 @@ import { AnalyzeResponse } from '../models';
                 </div>
 
               </div>
+
+            </div>
+
+            <div class="glass-card ollama-card">
+
+              <div class="card-header">
+                <i class="pi pi-sparkles"></i>
+                Анализ Ollama
+              </div>
+
+              @if (result.ollama_analysis) {
+                <div class="ollama-text">{{ result.ollama_analysis }}</div>
+              } @else if (result.ollama_error) {
+                <div class="ollama-error">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  <span>{{ result.ollama_error }}</span>
+                </div>
+              } @else {
+                <div class="ollama-error">
+                  <span>Анализ Ollama недоступен</span>
+                </div>
+              }
+
+            </div>
+
+            <div class="glass-card feedback-card">
+
+              <div class="feedback-header">
+                <div class="feedback-header-icon">
+                  <i class="pi pi-check-square"></i>
+                </div>
+                <div>
+                  <div class="feedback-title">Проверка результата</div>
+                  <p class="feedback-desc">
+                    Если знаете реальный статус аккаунта, укажите,
+                    верен ли анализ. Данные пойдут в дообучение ML-модели.
+                  </p>
+                </div>
+              </div>
+
+              @if (feedbackSubmitted && feedbackMessage) {
+                <div class="feedback-success">
+                  <i class="pi pi-check-circle"></i>
+                  <span>{{ feedbackMessage }}</span>
+                </div>
+              } @else {
+                <div class="feedback-actions" [class.is-loading]="feedbackLoading">
+
+                  <button
+                    type="button"
+                    class="feedback-option correct"
+                    [disabled]="feedbackLoading"
+                    (click)="submitFeedback('correct')"
+                  >
+                    <span class="option-icon-wrap correct">
+                      <i class="pi pi-thumbs-up"></i>
+                    </span>
+                    <span class="option-title">Анализ верный</span>
+                    <span class="option-hint">Результат совпадает</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="feedback-option real"
+                    [disabled]="feedbackLoading"
+                    (click)="submitFeedback('incorrect_real')"
+                  >
+                    <span class="option-icon-wrap real">
+                      <i class="pi pi-user"></i>
+                    </span>
+                    <span class="option-title">Неверно — реальный</span>
+                    <span class="option-hint">Аккаунт настоящий</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="feedback-option fake"
+                    [disabled]="feedbackLoading"
+                    (click)="submitFeedback('incorrect_fake')"
+                  >
+                    <span class="option-icon-wrap fake">
+                      <i class="pi pi-ban"></i>
+                    </span>
+                    <span class="option-title">Неверно — фейк</span>
+                    <span class="option-hint">Аккаунт поддельный</span>
+                  </button>
+
+                </div>
+
+                @if (feedbackLoading) {
+                  <div class="feedback-loading-hint">
+                    <i class="pi pi-spin pi-spinner"></i>
+                    Сохраняем разметку и переобучаем модель…
+                  </div>
+                }
+              }
+
+              @if (feedbackError) {
+                <div class="feedback-error">
+                  <i class="pi pi-times-circle"></i>
+                  <span>{{ feedbackError }}</span>
+                </div>
+              }
 
             </div>
 
@@ -622,99 +676,6 @@ import { AnalyzeResponse } from '../models';
       margin-bottom: 1.5rem;
     }
 
-    .profile-top {
-      display: flex;
-      gap: 1.5rem;
-      align-items: center;
-      margin-bottom: 1.5rem;
-      flex-wrap: wrap;
-    }
-
-    .avatar-wrapper {
-      position: relative;
-      width: 130px;
-      height: 130px;
-      flex-shrink: 0;
-    }
-
-    .avatar-image {
-      width: 130px;
-      height: 130px;
-      object-fit: cover;
-      border-radius: 26px;
-      display: block;
-      position: relative;
-      z-index: 2;
-      background: #111827;
-      border: 3px solid rgba(255,255,255,.12);
-      box-shadow:
-        0 15px 35px rgba(0,0,0,.35);
-    }
-
-    .avatar-ring {
-      position: absolute;
-      inset: -5px;
-      border-radius: 30px;
-      background:
-        linear-gradient(
-          135deg,
-          #3b82f6,
-          #8b5cf6
-        );
-      z-index: 1;
-      opacity: .7;
-      filter: blur(12px);
-    }
-
-    .avatar-fallback {
-      width: 130px;
-      height: 130px;
-      border-radius: 26px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.5rem;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.08);
-    }
-
-    .profile-main {
-      flex: 1;
-    }
-
-    .profile-name {
-      font-size: 1.8rem;
-      font-weight: 700;
-      line-height: 1.1;
-    }
-
-    .profile-id {
-      color: #60a5fa;
-      margin-top: .5rem;
-      font-weight: 600;
-    }
-
-    .profile-status {
-      margin-top: 1rem;
-      display: inline-flex;
-      align-items: center;
-      gap: .6rem;
-      padding: .55rem .9rem;
-      border-radius: 999px;
-      background: rgba(16,185,129,.12);
-      color: #6ee7b7;
-      border: 1px solid rgba(16,185,129,.2);
-      font-size: .92rem;
-    }
-
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: #10b981;
-      box-shadow: 0 0 12px #10b981;
-    }
-
     .info-list {
       display: flex;
       flex-direction: column;
@@ -733,6 +694,207 @@ import { AnalyzeResponse } from '../models';
 
     .info-item span {
       color: #94a3b8;
+    }
+
+    .info-item.bio-item {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .info-item.bio-item b {
+      margin-top: .5rem;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .ollama-card {
+      width: 100%;
+    }
+
+    .ollama-text {
+      white-space: pre-wrap;
+      line-height: 1.7;
+      color: #e2e8f0;
+      font-size: .98rem;
+    }
+
+    .ollama-error {
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+      padding: 1rem 1.1rem;
+      border-radius: 16px;
+      background: rgba(245,158,11,.1);
+      border: 1px solid rgba(245,158,11,.25);
+      color: #fcd34d;
+      line-height: 1.5;
+    }
+
+    .feedback-card {
+      width: 100%;
+    }
+
+    .feedback-header {
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+      margin-bottom: 1.75rem;
+    }
+
+    .feedback-header-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: rgba(59,130,246,.15);
+      border: 1px solid rgba(59,130,246,.25);
+      color: #93c5fd;
+      font-size: 1.35rem;
+    }
+
+    .feedback-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+
+    .feedback-desc {
+      margin: 0;
+      color: #94a3b8;
+      line-height: 1.65;
+      font-size: .95rem;
+      max-width: 720px;
+    }
+
+    .feedback-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .feedback-actions.is-loading {
+      opacity: .65;
+      pointer-events: none;
+    }
+
+    .feedback-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .65rem;
+      min-height: 148px;
+      padding: 1.35rem 1rem;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.04);
+      color: #fff;
+      cursor: pointer;
+      transition:
+        transform .2s ease,
+        border-color .2s ease,
+        background .2s ease,
+        box-shadow .2s ease;
+      text-align: center;
+    }
+
+    .feedback-option:hover:not(:disabled) {
+      transform: translateY(-3px);
+      background: rgba(255,255,255,.07);
+      box-shadow: 0 12px 32px rgba(0,0,0,.25);
+    }
+
+    .feedback-option:disabled {
+      cursor: not-allowed;
+    }
+
+    .option-icon-wrap {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .option-icon-wrap.correct {
+      background: rgba(34,197,94,.15);
+      border: 1px solid rgba(34,197,94,.28);
+      color: #4ade80;
+    }
+
+    .option-icon-wrap.real {
+      background: rgba(59,130,246,.15);
+      border: 1px solid rgba(59,130,246,.28);
+      color: #60a5fa;
+    }
+
+    .option-icon-wrap.fake {
+      background: rgba(239,68,68,.15);
+      border: 1px solid rgba(239,68,68,.28);
+      color: #f87171;
+    }
+
+    .feedback-option.correct:hover:not(:disabled) {
+      border-color: rgba(34,197,94,.45);
+    }
+
+    .feedback-option.real:hover:not(:disabled) {
+      border-color: rgba(59,130,246,.45);
+    }
+
+    .feedback-option.fake:hover:not(:disabled) {
+      border-color: rgba(239,68,68,.45);
+    }
+
+    .option-title {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .option-hint {
+      font-size: .82rem;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+
+    .feedback-loading-hint {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .65rem;
+      color: #93c5fd;
+      font-size: .92rem;
+    }
+
+    .feedback-success {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: 1rem 1.1rem;
+      border-radius: 16px;
+      background: rgba(34,197,94,.12);
+      border: 1px solid rgba(34,197,94,.25);
+      color: #86efac;
+    }
+
+    .feedback-error {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: 1rem 1.1rem;
+      border-radius: 16px;
+      background: rgba(239,68,68,.12);
+      border: 1px solid rgba(239,68,68,.25);
+      color: #fca5a5;
     }
 
     .stats-grid {
@@ -765,6 +927,12 @@ import { AnalyzeResponse } from '../models';
       color: #94a3b8;
     }
 
+    @media (max-width: 1024px) {
+      .feedback-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media (max-width: 768px) {
 
       .page {
@@ -794,14 +962,20 @@ import { AnalyzeResponse } from '../models';
         width: 100%;
       }
 
-      .profile-top {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-      }
-
       .stats-grid {
         grid-template-columns: 1fr;
+      }
+
+      .feedback-header {
+        flex-direction: column;
+      }
+
+      .feedback-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .feedback-option {
+        min-height: 120px;
       }
     }
   `],
@@ -812,6 +986,10 @@ export class AccountAnalyzerPageComponent {
   loading = false;
   result?: AnalyzeResponse;
   errorText = '';
+  feedbackLoading = false;
+  feedbackSubmitted = false;
+  feedbackMessage = '';
+  feedbackError = '';
 
   constructor(
     private readonly api: ApiService,
@@ -827,6 +1005,7 @@ export class AccountAnalyzerPageComponent {
     this.loading = true;
     this.errorText = '';
     this.result = undefined;
+    this.resetFeedback();
 
     this.api
       .predict(this.vkId.trim())
@@ -847,6 +1026,8 @@ export class AccountAnalyzerPageComponent {
             reasons: res?.reasons ?? [],
             features: res?.features ?? {},
             profile_info: res?.profile_info ?? {},
+            ollama_analysis: res?.ollama_analysis ?? null,
+            ollama_error: res?.ollama_error ?? null,
           };
 
           this.cdr.detectChanges();
@@ -863,6 +1044,47 @@ export class AccountAnalyzerPageComponent {
           this.cdr.detectChanges();
         },
       });
+  }
+
+  submitFeedback(verdict: FeedbackVerdict): void {
+    if (!this.result) {
+      return;
+    }
+
+    this.feedbackLoading = true;
+    this.feedbackError = '';
+    this.feedbackMessage = '';
+
+    this.api
+      .submitFeedback(
+        this.result.vk_id,
+        this.result.features,
+        this.result.label,
+        verdict
+      )
+      .subscribe({
+        next: (res) => {
+          this.feedbackSubmitted = true;
+          this.feedbackMessage = `${res.message}. Сохранена метка: ${
+            res.true_label === 'FAKE' ? 'фейк' : 'реальный'
+          }. Обучающих примеров: ${res.metrics.training_samples ?? '—'}.`;
+          this.feedbackLoading = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.feedbackError =
+            err?.error?.detail ?? 'Не удалось сохранить разметку';
+          this.feedbackLoading = false;
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  private resetFeedback(): void {
+    this.feedbackLoading = false;
+    this.feedbackSubmitted = false;
+    this.feedbackMessage = '';
+    this.feedbackError = '';
   }
 
   riskRu(risk: string): string {
@@ -889,9 +1111,6 @@ export class AccountAnalyzerPageComponent {
 
       'No profile avatar':
         'Нет аватара профиля',
-
-      'New account':
-        'Недавно созданный аккаунт',
 
       'Very low posting activity':
         'Низкая активность публикаций',

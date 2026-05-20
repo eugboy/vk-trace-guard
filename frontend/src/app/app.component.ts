@@ -57,23 +57,7 @@ import {
             routerLinkActive="active"
           >
             <i class="pi pi-user"></i>
-            <span>Аккаунт</span>
-          </a>
-
-          <a
-            routerLink="/followers"
-            routerLinkActive="active"
-          >
-            <i class="pi pi-users"></i>
-            <span>Подписчики</span>
-          </a>
-
-          <a
-            routerLink="/community"
-            routerLinkActive="active"
-          >
-            <i class="pi pi-globe"></i>
-            <span>Сообщество</span>
+            <span>Анализ пользователя</span>
           </a>
 
         </nav>

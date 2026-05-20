@@ -350,7 +350,6 @@ import { ApiService } from '../services/api.service';
       color: #fff;
     }
 
-
     .bg-glow {
       position: absolute;
       border-radius: 999px;
